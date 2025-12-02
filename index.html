@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Spotify vMix Widget</title>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #000;
+        color: white;
+        padding: 20px;
+      }
+      .info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      img {
+        width: 120px;
+        border-radius: 8px;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: bold;
+      }
+      .artist {
+        opacity: 0.8;
+        font-size: 18px;
+      }
+      button {
+        margin-top: 20px;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #1db954;
+        color: black;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Spotify Player for vMix</h1>
+    <button id="login-btn">Login to Spotify</button>
+
+    <div id="player-info" style="margin-top: 30px; display: none;">
+      <div class="info">
+        <img id="album-img" />
+        <div>
+          <div class="title" id="track-title"></div>
+          <div class="artist" id="track-artist"></div>
+        </div>
+      </div>
+
+      <button id="play-btn">Play / Pause</button>
+    </div>
+
+    <script>
+      // --- CONFIG ---
+      const CLIENT_ID = "2557bdca2b384f65912eab3dc58c86a4"; // <--- Replace
+      const REDIRECT_URI = "https://sites.google.com/view/ehssports/spotify/callback"; // <--- Make sure this matches Spotify Dashboard
+      // --------------
+
+      // Generate Spotify login URL
+      const scope = "streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state";
+      const loginUrl =
+        "https://accounts.spotify.com/authorize" +
+        "?client_id=" + CLIENT_ID +
+        "&response_type=token" +
+        "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
+        "&scope=" + encodeURIComponent(scope);
+
+      document.getElementById("login-btn").onclick = function () {
+        window.location = loginUrl;
+      };
+
+      // Extract token from URL after login
+      const hash = window.location.hash
+        .substring(1)
+        .split("&")
+        .reduce((acc, item) => {
+          const parts = item.split("=");
+          acc[parts[0]] = parts[1];
+          return acc;
+        }, {});
+
+      const accessToken = hash.access_token;
+
+      if (accessToken) {
+        document.getElementById("login-btn").style.display = "none";
+        document.getElementById("player-info").style.display = "block";
+      }
+
+      // Spotify Web Playback SDK
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        const player = new Spotify.Player({
+          name: "vMix Spotify Player",
+          getOAuthToken: (cb) => cb(accessToken),
+          volume: 0.7,
+        });
+
+        // Connect the player
+        player.connect();
+
+        // Update song info
+        player.addListener("player_state_changed", (state) => {
+          if (!state || !state.track_window.current_track) return;
+
+          const track = state.track_window.current_track;
+
+          document.getElementById("album-img").src = track.album.images[0].url;
+          document.getElementById("track-title").textContent = track.name;
+          document.getElementById("track-artist").textContent = track.artists
+            .map((a) => a.name)
+            .join(", ");
+        });
+
+        // Play / pause button
+        document.getElementById("play-btn").onclick = () => {
+          player.togglePlay();
+        };
+      };
+    </script>
+  </body>
+</html>
